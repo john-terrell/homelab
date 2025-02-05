@@ -1,0 +1,56 @@
+---
+- name: Ensure stash prerequisites are present
+  apt:
+    name:
+    - ffmpeg
+    state: present
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure stash binary has been downloaded
+  ansible.builtin.get_url:
+    url: https://github.com/stashapp/stash/releases/latest/download/stash-linux
+    dest: /usr/bin/stash
+    mode: '0555'
+  register: stash_binary
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+- name: Ensure stash group exists
+  ansible.builtin.group:
+    name: stash
+    state: present
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure stash user exists
+  ansible.builtin.user:
+    name: stash
+    comment: Stash McStashface
+    group: stash
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure stash working directory exists
+  ansible.builtin.file:
+    path: /opt/stash
+    state: directory
+    recurse: yes
+    owner: stash
+    group: stash
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure stash unit file is created
+  template:
+    src: templates/stash.service.j2
+    dest: /lib/systemd/system/stash.service
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure stash service has been enabled and started
+  service:
+    name: stash
+    state: started
+    enabled: true
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure stash service started/restarted if the stash binary changes
+  service:
+    name: stash
+    state: restarted
+    enable: enabled
+  when: stash_binary.changed and ansible_distribution in ['Debian', 'Ubuntu']

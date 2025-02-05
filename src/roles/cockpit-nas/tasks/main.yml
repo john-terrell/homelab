@@ -1,0 +1,50 @@
+---
+- name: Ensure 45Drives Apt signing key is installed
+  ansible.builtin.apt_key:
+    url: https://repo.45drives.com/key/gpg.asc
+    keyring: /usr/share/keyrings/45drives-archive-keyring.gpg
+    state: present
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+  register: fourtyfive_drives_apt_key
+
+- name: Ensure 45Drives Apt repository is installed
+  ansible.builtin.get_url:
+    url: https://repo.45drives.com/lists/45drives.sources
+    dest: /etc/apt/sources.list.d/45drives.sources
+    mode: '0444'
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+  register: fourtyfive_drives_apt_repo
+
+- name: Ensure Apt caches are updated if 45Drives just added
+  ansible.builtin.apt:
+    update_cache: yes
+  changed_when: false
+  when: ansible_distribution in ['Debian', 'Ubuntu'] and (fourtyfive_drives_apt_key.changed or fourtyfive_drives_apt_repo.changed)
+
+- name: Ensure Cockpit and dependent packages are installed
+  ansible.builtin.apt:
+    pkg:
+      - lsscsi
+      - nfs-common
+      - samba
+      - smartmontools
+      - targetcli-fb
+      - zfsutils-linux
+      - cockpit
+      - cockpit-benchmark
+      - cockpit-file-sharing
+      - cockpit-identities
+      - cockpit-machines
+      - cockpit-navigator
+      - cockpit-pcp
+      - cockpit-sosreport
+      - cockpit-zfs-manager
+  when: ansible_distribution in ['Debian', 'Ubuntu']
+
+- name: Ensure service 'cockpit' is enabled and started
+  ansible.builtin.service:
+    name: cockpit
+    state: started
+    enabled: yes
+  changed_when: false
+  when: ansible_distribution in ['Debian', 'Ubuntu']

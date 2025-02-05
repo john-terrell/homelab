@@ -1,0 +1,22 @@
+---
+- name: Ensure Emulex Driver is in target mode
+  lineinfile:
+    path: /kernel/drv/emlxs.conf
+    regexp: "^target-mode"
+    line: "target-mode=1"
+
+- name: Ensure Emulex Driver is attached at boot
+  lineinfile:
+    path: /kernel/drv/emlxs.conf
+    regexp: "^.*ddi-forceattach"
+    line: "ddi-forceattach=1"
+      
+- name: Ensure SCSI Target Mode Framework is enabled
+  service: name=stmf state=started
+
+- name: Ensure Fibre Channel Initiator Exists
+  include_tasks: ensure_initiator_exists.yml
+  with_items: "{{ fiberchannel_target_host_initiators }}"
+  loop_control:
+    loop_var: initiator
+  when: fiberchannel_target_host_initiators is defined

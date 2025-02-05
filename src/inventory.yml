@@ -3,22 +3,85 @@ network:
     unifi:
       ansible_host: 192.168.1.1
       ansible_user: root
+#    office_mikrotik_css610:
+#      ansible_host: 192.168.1.244
 
-storage:
+iot:
   hosts:
+    hyperhdr:
+      ansible_host: 10.10.27.131
+      ansible_user: pi
+
+home_automation_servers:
+#  hosts:
+#    home_assistant:
+#      ansible_host: 10.10.100.12
+
+storage_servers:
+  vars:
+    use_cockpit: false
+    use_stash: false
+    use_fiberchannel_target_host: false
+
+  hosts:
+    san0:
+      ansible_host: 10.10.100.9
+      use_fiberchannel_target_host: true
+      fiberchannel_target_host_volume_location: tank/fc_vols
+      fiberchannel_target_host_initiators:
+        - name: P620_Port1
+          id: wwn.10000000C9881AD0
+          volumes:
+          - name: steam
+            size: 2t
+            vendor: "FC_NORCO"
+            product: "STEAM"
+          - name: dev
+            size: 2t
+            vendor: "FC_NORCO"
+            product: "DEV"
+        - name: ThunderLink1_Port1
+          id: wwn.100000108604660E
+          volumes:
+          - name: photography
+            size: 4t
+            vendor: "FC_NORCO"
+            product: "PHOTOS"
+          - name: work
+            size: 1t
+            vendor: "FC_NORCO"
+            product: "WORK"
+          - name: projects
+            size: 24t
+            vendor: "FC_NORCO"
+            product: "PROJECTS"
+
     nas0:
       ansible_host: 10.10.100.10
-    san0:
-      ansible_host: 10.10.4.228
+      use_stash: true
+      use_cockpit: true
+      
 
-proxmox_servers:
+gitlab_servers:
+  hosts:
+    gitlab2:
+      ansible_host: 10.10.100.11
+      ansible_user: root
+
+pve_servers:
+  vars:
+    virtual_router_id: 43
+    virtual_ip: 10.10.100.30
   hosts:
     r620-1: 
       ansible_host: 10.10.100.31
+      vrrp_nic: eno3
     r620-2: 
       ansible_host: 10.10.100.32
+      vrrp_nic: eno3
     r620-3: 
       ansible_host: 10.10.100.33
+      vrrp_nic: eno3
 
 k8s_servers:
   hosts:

@@ -1,0 +1,11 @@
+---
+- name: Query for current host group members
+  shell: "stmfadm list-hg -v {{ initiator.name }} | /usr/bin/tr '[:lower:]' '[:upper:]'"
+  register: hg_member_list
+  changed_when: false
+
+- name: Ensure all host group memebers are present
+  command: "stmfadm add-hg-member -g {{ initiator.name }} {{ item }}"
+  when: hg_member_list.stdout.find(item[1]|upper) == -1
+  with_items:
+    - "{{ initiator.ports }}"

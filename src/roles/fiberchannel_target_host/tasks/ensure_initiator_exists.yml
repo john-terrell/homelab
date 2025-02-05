@@ -1,0 +1,55 @@
+---
+- name: Ensure initiator dataset is present
+  zfs:
+    name: "{{ fiberchannel_target_host_volume_location }}/{{ initiator.name }}"
+    state: present
+
+- name: Ensure initiator volumes are present
+  zfs:
+    name: "{{ fiberchannel_target_host_volume_location }}/{{ initiator.name }}/{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      volsize: "{{ item.size }}"
+  with_items: "{{ initiator.volumes }}"
+  when: initiator.volumes is defined
+
+- name: Get List of Host Groups
+  command: "stmfadm list-hg"
+  register: hg_list
+  changed_when: false
+
+- name: Ensure Host Group Exist for Initiator
+  command: "stmfadm create-hg {{ initiator.name }}"
+  when: (hg_list.stdout.find(initiator.name) == -1)
+
+- name: Query for current host group members
+  shell: "stmfadm list-hg -v {{ initiator.name }} | /usr/bin/tr '[:lower:]' '[:upper:]'"
+  register: hg_member_list
+  changed_when: false
+
+- debug:
+    var: hg_member_list
+
+- name: Ensure all host group members are present
+  command: "stmfadm add-hg-member -g {{ initiator.name }} {{ initiator.id }}"
+  when: hg_member_list.stdout.find(initiator.id|upper) == -1
+
+- name: Get List of Logical Units
+  shell: "sbdadm list-lu"
+  register: lu_list
+  changed_when: false
+
+- name: Ensure Logical Units Exist
+  command: "stmfadm create-lu -p vid={{ item.vendor }} -p pid={{ item.product }} /dev/zvol/rdsk/{{ fiberchannel_target_host_volume_location }}/{{ initiator.name }}/{{ item.name }}"
+  with_items: "{{ initiator.volumes }}"
+  when: (fiberchannel_target_host_initiators is defined) and (lu_list.stdout.find(item.name) == -1)
+
+- name: Setting up initiator views
+  set_fact: 
+    volumes: "{{ volumes | default([]) + [{'initiator': initiator.name, 'name': item.name}] }}"
+  with_items: "{{ initiator.volumes }}"
+
+- name: Ensure Views Exist
+  include_tasks: ensure_view_exists.yml
+  with_items: "{{ volumes }}"
+  when: fiberchannel_target_host_initiators is defined

@@ -1,5 +1,12 @@
 ---
+roles:
+  - name: evrardjp.keepalived
+    version: "8.1.0"
+  - name: istvano.microk8s
+    version: "1.28.1"
+
 collections:
   - ansible.posix
   - community.docker
   - community.general
+  - hifis.toolkit

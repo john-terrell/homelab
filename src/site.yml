@@ -1,17 +1,64 @@
 ---
 - hosts: all
   become: true
+  gather_facts: true
 
+  roles:
+    - role: hifis.toolkit.unattended_upgrades
+      unattended_automatic_reboot_time: "03:30"
+      when: ansible_facts['os_family'] == 'Debian'
+
+- hosts: storage_servers
+  become: true
+  roles:
+    - role: stash_host
+      when: use_stash
+    - role: cockpit-nas
+      when: use_cockpit
+    - role: fiberchannel_target_host
+      when: use_fiberchannel_target_host
+
+- hosts: pve_servers
+  become: true
   pre_tasks:
-    # - name: Load configuration (with defaults from example file).
-    #   ansible.builtin.include_vars: "{{ item }}"
-    #   loop:
-    #     - example.config.yml
-    #     - config.yml
+  - name: Ensure enterprise Ceph apt repository is absent
+    ansible.builtin.apt_repository:
+      repo: deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise
+      state: absent
+      filename: ceph
 
-    - name: Ensure apt cache is up to date.
-      ansible.builtin.apt:
-        update_cache: true
-        cache_valid_time: 3600
-      when:
-        - ansible_facts.os_family == "Debian"
+  - name: Ensure non-enterprise Ceph apt repository is present
+    ansible.builtin.apt_repository:
+      repo: deb http://download.proxmox.com/debian/ceph-quincy bookworm no-subscription
+      state: present
+      filename: ceph
+
+  - name: Ensure enterprise Proxmox apt repositories is absent
+    ansible.builtin.apt_repository:
+      repo: deb https://enterprise.proxmox.com/debian/pve bookworm pve-enterprise
+      state: absent
+      filename: pve-enterprise
+
+  - name: Ensure non-enterprise Proxmox apt repositories are present
+    ansible.builtin.apt_repository:
+      repo: deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription
+      state: present
+
+  roles:
+  - role: ansible-keepalived
+    vars:
+      keepalived_instances:
+        internal:
+          interface: "{{ vrrp_nic | default(ansible_default_ipv4.interface, true) }}"
+          state: "{{ (groups['pve_servers'].index(inventory_hostname) == 0) | ternary('MASTER','BACKUP') }}"
+          virtual_router_id: "{{ virtual_router_id }}"
+          priority: "{{ (inventory_hostname == groups['pve_servers'][0]) | ternary('250', '100') }}"
+          vips:
+          - "{{ virtual_ip }} dev {{ vrrp_nic | default(ansible_default_ipv4.interface, true) }}"
+
+
+- hosts: gitlab_servers
+  become: true
+  
+  roles:
+    - role: hifis.toolkit.gitlab

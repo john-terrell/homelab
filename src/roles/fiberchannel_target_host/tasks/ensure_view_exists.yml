@@ -1,0 +1,21 @@
+---
+- name: Determine Logical Unit for Item
+  shell: "stmfadm list-lu -v | ggrep {{ item.name }} -B3 | head -1 | sed 's/^LU Name: \\(.*\\)/\\1/'"
+  register: logical_unit_for_name
+  changed_when: false
+
+- debug:
+    var: logical_unit_for_name
+
+- name: Determine if view for Logical Unit exists
+  shell: "stmfadm list-view -l {{ logical_unit_for_name.stdout }}"
+  register: view_lookup
+  changed_when: false
+  failed_when: false
+
+- debug:
+    var: view_lookup
+
+- name: Ensure view exists
+  shell: "stmfadm add-view -h {{ item.initiator }} {{ logical_unit_for_name.stdout }}"
+  when: view_lookup.stderr.find("no views found") != -1

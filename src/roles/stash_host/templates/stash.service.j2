@@ -1,0 +1,14 @@
+[Unit]
+Description=Stash App
+Documentation=https://github.com/stashapp/stash
+After=network.target
+
+[Service]
+Type=simple
+User=stash
+ExecStart=/usr/bin/stash
+Restart=on-failure
+WorkingDirectory=/opt/stash
+
+[Install]
+WantedBy=multi-user.target
