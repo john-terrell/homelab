@@ -1,8 +1,18 @@
+all:
+  vars:
+    ansible_become_pass: '{{ default_become_pass }}' # stored in ansible vault
+
 network:
+  vars:
+    use_maas: false
   hosts:
     unifi:
       ansible_host: 192.168.1.1
       ansible_user: root
+    maas:
+      ansible_host: 10.10.200.5
+      ansible_user: johnt
+      use_maas: true
 #    office_mikrotik_css610:
 #      ansible_host: 192.168.1.244
 

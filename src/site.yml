@@ -8,6 +8,32 @@
       unattended_automatic_reboot_time: "03:30"
       when: ansible_facts['os_family'] == 'Debian'
 
+  tasks:
+    - name: update and upgrade apt packages
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400 # one day
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: check if reboot needed
+      stat:
+        path: /var/run/reboot-required
+      register: check_reboot
+      changed_when: false
+
+    - name: reboot system (if necessary)
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible"
+        post_reboot_delay: 120
+      when: check_reboot.stat.exists
+
+- hosts: network
+  become: true
+  roles:
+    - role: maas_controller
+      when: use_maas
+
 - hosts: storage_servers
   become: true
   roles:

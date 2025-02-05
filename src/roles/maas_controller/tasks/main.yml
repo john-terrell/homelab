@@ -1,0 +1,8 @@
+---
+- name: Ensure MAAS installed
+  community.general.snap:
+    name: maas
+    channel: 3.4/stable
+    state: present
+    classic: true
+  when: ansible_distribution == "Ubuntu"
