@@ -30,8 +30,10 @@ home_automation_servers:
 storage_servers:
   vars:
     use_cockpit: false
-    use_stash: false
+    use_docker_host: false
     use_fiberchannel_target_host: false
+    use_stash: false
+    use_zfs_host: false
 
   hosts:
     san0:
@@ -71,27 +73,53 @@ storage_servers:
       use_stash: true
       use_cockpit: true
       
+    hl8:
+      ansible_host: 10.10.6.150
+      ansible_python_interpreter: /usr/bin/python3
+      use_zfs_host: true
+      zfs_data_sets:
+      - name: tank/docker
+        state: present
+      - name: tank/Media
+        state: present
+      - name: tank/Scratch
+        state: present
+      use_docker_host: true
 
-gitlab_servers:
-  hosts:
-    gitlab2:
-      ansible_host: 10.10.100.11
-      ansible_user: root
+#gitlab_servers:
+#  hosts:
+#    gitlab:
+#      ansible_host: 10.10.100.11
+#      ansible_user: root
 
-pve_servers:
+proxmox_servers:
   vars:
     virtual_router_id: 43
     virtual_ip: 10.10.100.30
+    use_pve: false
+    use_pbs: false
+    use_keepalived: false
+
   hosts:
+    pbs:  # backup server
+      ansible_host: 10.10.100.15
+      ansible_user: root
+      use_pbs: true
     r620-1: 
       ansible_host: 10.10.100.31
       vrrp_nic: eno3
+      use_pve: true
+      use_keepalived: true
     r620-2: 
       ansible_host: 10.10.100.32
       vrrp_nic: eno3
+      use_pve: true
+      use_keepalived: true
     r620-3: 
       ansible_host: 10.10.100.33
       vrrp_nic: eno3
+      use_pve: true
+      use_keepalived: true
 
 k8s_servers:
   hosts:

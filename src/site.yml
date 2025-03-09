@@ -16,6 +16,12 @@
         cache_valid_time: 86400 # one day
       when: ansible_facts['os_family'] == 'Debian'
 
+#    - name: update and upgrade dnf packages
+#      ansible.builtin.dnf:
+#        name: "*"
+#        state: latest
+#      when: ansible_facts['os_family'] == 'RedHat'
+
     - name: check if reboot needed
       stat:
         path: /var/run/reboot-required
@@ -37,14 +43,20 @@
 - hosts: storage_servers
   become: true
   roles:
+    - role: zfs_host
+      when: use_zfs_host
     - role: stash_host
       when: use_stash
     - role: cockpit-nas
       when: use_cockpit
     - role: fiberchannel_target_host
       when: use_fiberchannel_target_host
+    - role: docker_host
+      vars:
+        docker_data_root: /tank/docker/
+      when: use_docker_host
 
-- hosts: pve_servers
+- hosts: proxmox_servers
   become: true
   pre_tasks:
   - name: Ensure enterprise Ceph apt repository is absent
@@ -52,23 +64,40 @@
       repo: deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise
       state: absent
       filename: ceph
+    when: use_pve
 
   - name: Ensure non-enterprise Ceph apt repository is present
     ansible.builtin.apt_repository:
       repo: deb http://download.proxmox.com/debian/ceph-quincy bookworm no-subscription
       state: present
       filename: ceph
+    when: use_pve
 
-  - name: Ensure enterprise Proxmox apt repositories is absent
+  - name: Ensure enterprise Proxmox (PVE) apt repositories is absent
     ansible.builtin.apt_repository:
       repo: deb https://enterprise.proxmox.com/debian/pve bookworm pve-enterprise
       state: absent
       filename: pve-enterprise
+    when: use_pve
 
-  - name: Ensure non-enterprise Proxmox apt repositories are present
+  - name: Ensure non-enterprise Proxmox (PVE) apt repositories are present
     ansible.builtin.apt_repository:
       repo: deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription
       state: present
+    when: use_pve
+
+  - name: Ensure enterprise Proxmox (PBS) apt repositories is absent
+    ansible.builtin.apt_repository:
+      repo: deb https://enterprise.proxmox.com/debian/pbs bookworm pbs-enterprise
+      state: absent
+      filename: pve-enterprise
+    when: use_pbs
+
+  - name: Ensure non-enterprise Proxmox (PBS) apt repositories are present
+    ansible.builtin.apt_repository:
+      repo: deb http://download.proxmox.com/debian/pbs bookworm pbs-no-subscription
+      state: present
+    when: use_pbs
 
   roles:
   - role: ansible-keepalived
@@ -81,7 +110,7 @@
           priority: "{{ (inventory_hostname == groups['pve_servers'][0]) | ternary('250', '100') }}"
           vips:
           - "{{ virtual_ip }} dev {{ vrrp_nic | default(ansible_default_ipv4.interface, true) }}"
-
+    when: use_keepalived
 
 - hosts: gitlab_servers
   become: true

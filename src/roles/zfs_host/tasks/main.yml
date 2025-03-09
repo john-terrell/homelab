@@ -1,0 +1,6 @@
+---
+- name: Ensure ZFS datasets created
+  community.general.zfs: 
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+  with_items: "{{ zfs_data_sets }}"

@@ -13,6 +13,7 @@
     mode: '0555'
   register: stash_binary
   when: ansible_distribution in ['Debian', 'Ubuntu']
+  
 - name: Ensure stash group exists
   ansible.builtin.group:
     name: stash

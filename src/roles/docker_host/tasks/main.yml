@@ -1,0 +1,58 @@
+---
+# - name: Ensure Docker-CE is installed
+#   package:
+#     name: docker-ce
+#     state: present
+
+- name: Ensure Docker daemon started
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Execute script to set the docker data root
+  become: true
+  ansible.builtin.script: "{{ role_path }}/scripts/set_docker_data_root.py {{ docker_data_root }}"
+  register: docker_data_root_result
+  changed_when: False
+
+- name: Set a fact with the result of the above script
+  set_fact:
+    result_from_script: "{{ docker_data_root_result.stdout | from_json }}"
+
+- debug:
+    msg: "{{ result_from_script }}"
+
+- name: Set a fact indicating if the docker data root was new
+  set_fact:
+    docker_data_root_changed: "{{ result_from_script.changed }}"
+
+- block:
+  - name: Set a fact to indicate the old data root
+    set_fact:
+      docker_old_data_root: "{{ result_from_script.old_data_root }}"
+
+  - name: Stop the docker service
+    service:
+      name: docker
+      state: stopped
+
+  - name: Stop the docker socket service
+    service:
+      name: docker.socket
+      state: stopped
+      
+  - name: Copy files from the old data-root to the new
+    ansible.builtin.command: "rsync -aurlv \"{{ docker_old_data_root }}\" \"{{ docker_data_root }}\""
+
+  - name: Restart docker service if data root changed
+    service:
+      name: docker
+      state: started
+
+  - name: Restart docker socket service if data root changed
+    service:
+      name: docker.socket
+      state: started
+
+  when: docker_data_root_changed
